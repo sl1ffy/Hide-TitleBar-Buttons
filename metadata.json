@@ -1,0 +1,23 @@
+{
+  "name": "Hide TitleBar Buttons",
+  "image": "logo.svg",
+  "banner": "banner.svg",
+  "libraryLogo": "logo.png",
+  "author": "sl1ffy",
+  "description": "Скрывает кнопки управления окном в полноэкранном режиме и показывает их только при наведении",
+  "version": "1.0.0",
+  "css": "",
+  "script": "script.js",
+  "type": "script",
+  "tags": [
+    "fullscreen",
+    "ui",
+    "utility"
+  ],
+  "dependencies": [],
+  "conflictsWith": [],
+  "allowedUrls": [],
+  "supportedVersions": [],
+  "installSource": "local",
+  "id": "61778f03403fb9e423fe19a9"
+}
