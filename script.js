@@ -1,92 +1,83 @@
 (function () {
     'use strict';
 
-    // Параметры верхней панели
-    let enabled = true;
-    let idleOpacity = 0;
+    const ADDON_NAME = 'Hide TitleBar Buttons';
+    const STYLE_ID = 'hide-titlebar-buttons-style';
 
-    // Параметры кнопки сворачивания плеера
-    let closeButtonEnabled = true;
-    let closeButtonOpacity = 0;
+    function injectStyles() {
+        try {
+            let settings = {};
+            if (window.pulsesyncApi && typeof window.pulsesyncApi.getSettings === 'function') {
+                const store = window.pulsesyncApi.getSettings(ADDON_NAME);
+                if (store && typeof store.getCurrent === 'function') {
+                    settings = store.getCurrent() || {};
+                }
+            }
 
-    // Динамический элемент стилей
-    const styleEl = document.createElement('style');
-    styleEl.id = 'pulsesync-autohide-style';
-    (document.head || document.documentElement).appendChild(styleEl);
+            const hideTitleBar = settings.hideTitleBar?.value ?? true;
+            const titleBarOpacity = settings.titleBarOpacity?.value ?? 0;
+            const hideFullscreenClose = settings.hideFullscreenClose?.value ?? true;
+            const fullscreenOpacity = settings.fullscreenOpacity?.value ?? 0;
 
-    // Вспомогательная функция чтения значений из конфига
-    function readValue(settings, key, fallback) {
-        if (!settings) return fallback;
-        const entry = settings[key];
-        if (entry !== null && typeof entry === 'object' && !Array.isArray(entry)) {
-            if (typeof entry.value !== 'undefined') return entry.value;
-            if (typeof entry.default !== 'undefined') return entry.default;
+            let styleElement = document.getElementById(STYLE_ID);
+            if (!styleElement) {
+                styleElement = document.createElement('style');
+                styleElement.id = STYLE_ID;
+                (document.head || document.documentElement).appendChild(styleElement);
+            }
+
+            let css = '';
+
+            if (hideTitleBar) {
+                css += `
+                    [class*="TitleBar_button"]:not([class*="pulsesync"]):not([id*="pulsesync"]),
+                    #sr-reload-button {
+                        opacity: ${titleBarOpacity} !important;
+                        transition: opacity 0.2s ease !important;
+                    }
+                    [class*="TitleBar_button"]:not([class*="pulsesync"]):not([id*="pulsesync"]):hover,
+                    #sr-reload-button:hover {
+                        opacity: 1 !important;
+                    }
+                `;
+            }
+
+            if (hideFullscreenClose) {
+                css += `
+                    [data-test-id="FULLSCREEN_PLAYER_CLOSE_BUTTON"] {
+                        opacity: ${fullscreenOpacity} !important;
+                        transition: opacity 0.2s ease !important;
+                    }
+                    [data-test-id="FULLSCREEN_PLAYER_CLOSE_BUTTON"]:hover {
+                        opacity: 1 !important;
+                    }
+                `;
+            }
+
+            styleElement.textContent = css;
+        } catch (e) {
+            console.error('[Hide TitleBar Buttons] Error injecting styles:', e);
         }
-        return typeof entry !== 'undefined' ? entry : fallback;
     }
 
-    // Формирование и применение CSS
-    function applyStyles() {
-        let css = '';
+    function init() {
+        injectStyles();
 
-        // 1. Стили для верхней панели (TitleBar + Reload)
-        if (enabled) {
-            css += `
-                [class*="TitleBar_root"],
-                [class*="TitleBar_button"],
-                #sr-reload-button {
-                    opacity: ${idleOpacity} !important;
-                    transition: opacity 0.2s ease-in-out !important;
+        try {
+            if (window.pulsesyncApi && typeof window.pulsesyncApi.getSettings === 'function') {
+                const store = window.pulsesyncApi.getSettings(ADDON_NAME);
+                if (store && typeof store.onChange === 'function') {
+                    store.onChange(() => injectStyles());
                 }
-
-                [class*="TitleBar_root"]:hover,
-                [class*="TitleBar_button"]:hover,
-                #sr-reload-button:hover {
-                    opacity: 1 !important;
-                }
-            `;
+            }
+        } catch (e) {
+            console.error('[Hide TitleBar Buttons] Error subscribing to settings:', e);
         }
-
-        // 2. Стили для кнопки закрытия полноэкранного плеера
-        if (closeButtonEnabled) {
-            css += `
-                [data-test-id="FULLSCREEN_PLAYER_CLOSE_BUTTON"],
-                [class*="FullscreenPlayerDesktop_closeButton"] {
-                    opacity: ${closeButtonOpacity} !important;
-                    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out !important;
-                }
-
-                [data-test-id="FULLSCREEN_PLAYER_CLOSE_BUTTON"]:hover,
-                [class*="FullscreenPlayerDesktop_closeButton"]:hover {
-                    opacity: 1 !important;
-                }
-            `;
-        }
-
-        styleEl.textContent = css;
     }
 
-    // Обновление состояния из интерфейса настроек
-    function applySettings(settings) {
-        enabled = Boolean(readValue(settings, 'enabled', true));
-        idleOpacity = parseFloat(readValue(settings, 'opacityLevel', 0));
-
-        closeButtonEnabled = Boolean(readValue(settings, 'closeButtonEnabled', true));
-        closeButtonOpacity = parseFloat(readValue(settings, 'closeButtonOpacity', 0));
-
-        applyStyles();
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
     }
-
-    // Инициализация API PulseSync (укажите точное имя из вашего metadata.json)
-    const store = window.pulsesyncApi?.getSettings('Hide TitleBar Buttons') ?? {
-        getCurrent: () => ({}),
-        onChange: () => () => {},
-    };
-
-    applySettings(store.getCurrent());
-
-    store.onChange(nextSettings => {
-        applySettings(nextSettings);
-    });
-
 })();
